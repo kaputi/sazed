@@ -12,6 +12,7 @@ type treeModel struct {
 	directories []string
 	paths       map[string]string
 	cursor      int
+	focus       bool
 }
 
 func initTreeModel(pathList []string) treeModel {
@@ -33,28 +34,38 @@ func (m treeModel) Init() tea.Cmd {
 	return nil
 }
 
+func (m treeModel) Focus() {
+	m.focus = true
+}
+
+func (m treeModel) Blur() {
+	m.focus = false
+}
+
+func (m treeModel) Focused() bool {
+	return m.focus
+}
+
 func (m treeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	fmt.Println("HELLOOOOO")
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "j":
 			m.cursor++
-			// if m.cursor >= len(m.directories) {
-			// m.cursor = 0
-			// }
+			if m.cursor >= len(m.directories) {
+				m.cursor = 0
+			}
 		case "k":
 			m.cursor--
-			// if m.cursor < 0 {
-			// m.cursor = len(m.directories) - 1
-			// }
+			if m.cursor < 0 {
+				m.cursor = len(m.directories) - 1
+			}
 		}
 	}
 	return m, nil
 }
 
 func (m treeModel) View() string {
-	fmt.Println("tree.VIew")
 	s := ""
 	for i, dir := range m.directories {
 		cursor := "  "
@@ -65,9 +76,3 @@ func (m treeModel) View() string {
 	}
 	return s
 }
-
-
-// func (m treeModel) Next() tea.Msg {
-// 	m.cursor++
-// 	return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")}
-// }

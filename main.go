@@ -4,153 +4,120 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
 type focused int
 
+const margin = 4
+
 const (
-	tree focused = iota
-	list
-	snippets
+	treeView focused = iota
+	listView
+	snippetView
 )
 
 var (
-	modelStyle = lipgloss.NewStyle().
-			Width(15).
-			Height(10).
+	columnStyle = lipgloss.NewStyle().
 			BorderStyle(lipgloss.NormalBorder())
 
-	activeModelStyle = lipgloss.NewStyle().
-				Width(15).
-				Height(10).
-				BorderStyle(lipgloss.NormalBorder()).
-				BorderForeground(lipgloss.Color("205"))
+	treeStyle           lipgloss.Style
+	focusedTreeStyle    lipgloss.Style
+	listStyle           lipgloss.Style
+	focusedListStyle    lipgloss.Style
+	snippetStyle        lipgloss.Style
+	focusedSnippetStyle lipgloss.Style
 )
 
-// type treeModel struct {
-// }
-
-// type listModel struct {
-// }
-
-// type snippetModel struct {
-// }
-
-type testModel struct {
-	choices  []string
-	cursor   int
-	selected map[int]struct{}
-}
-
-func initTestModel() testModel {
-	return testModel{
-		choices:  []string{"one", "two", "three", "four", "five"},
-		selected: make(map[int]struct{}),
-	}
-}
-
-func (m testModel) Init() tea.Cmd {
-	return nil
-}
-
-func (m testModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-
-		switch msg.String() {
-		case "ctrl+c", "q":
-			return m, tea.Quit
-		case "j", "down":
-			if m.cursor > 0 {
-				m.cursor--
-			}
-		case "k", "up":
-			if m.cursor < len(m.choices)-1 {
-				m.cursor++
-			}
-		case "enter", " ", "l":
-			_, ok := m.selected[m.cursor]
-			if ok {
-				delete(m.selected, m.cursor)
-			} else {
-				m.selected[m.cursor] = struct{}{}
-			}
-		}
-	}
-
-	return m, nil
-}
-
-func (m testModel) View() string {
-	s := ""
-
-	for i, choice := range m.choices {
-		cursor := "  "
-		if m.cursor == i {
-			cursor = "->"
-		}
-
-		s += fmt.Sprintf("%s %s\n", cursor, choice)
-	}
-
-	return s
-}
-
 type mainModel struct {
-	active  focused
+	help    help.Model
+	focused focused
 	tree    treeModel
-	list    testModel
-	snippet testModel
+	list    treeModel
+	snippet treeModel
+	quiting bool
+	loaded  bool
 }
 
 func newModel() mainModel {
+	help := help.New()
+	help.ShowAll = true
 	return mainModel{
-		active: tree,
+		help:    help,
+		focused: treeView,
 		tree: initTreeModel(
 			[]string{
 				"/abc/def/ghi",
 				"/home/eduardo/pupu",
 			},
 		),
-		list:    initTestModel(),
-		snippet: initTestModel(),
+		list: initTreeModel(
+			[]string{
+				"/Hello/World",
+				"/Hello/World/Again",
+			},
+		),
+		snippet: initTreeModel(
+			[]string{
+				"/lala",
+				"/lalalala",
+			},
+		),
 	}
 }
 
 func (m mainModel) Init() tea.Cmd {
-	return tea.Batch(m.tree.Init(), m.list.Init(), m.snippet.Init())
+	return tea.Batch(m.tree.Init(), m.list.Init())
 }
 
 func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
-	// fmt.Println(msg)
-
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.help.Width = msg.Width - margin
+		treeWidth := int(float32(msg.Width) * 0.2)
+		treeStyle = columnStyle.Width(treeWidth).Height(msg.Height - 2)
+		focusedTreeStyle = treeStyle.BorderForeground(lipgloss.Color("#008080"))
+
+		listWidth := int(float32(msg.Width) * 0.2)
+		listStyle = columnStyle.Width(listWidth).Height(msg.Height - 2)
+		focusedListStyle = listStyle.BorderForeground(lipgloss.Color("#008080"))
+
+		snippetWidth := int(float32(msg.Width)*0.6) - 4
+		snippetStyle = columnStyle.Width(snippetWidth).Height(msg.Height - 2)
+		focusedSnippetStyle = snippetStyle.BorderForeground(lipgloss.Color("#008080"))
+
+		m.loaded = true
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":
 			return m, tea.Quit
-
-		case "down", "j":
-			switch m.active {
-			case tree:
-				m.tree, cmd = m.tree.Update(msg)
-				// m.tree, cmd = m.tree.Update(msg)
-				// cmds = append(cmds, cmd)
+		case "enter", " ", "l", "right":
+			m.focused++
+			if m.focused > snippetView {
+				m.focused = snippetView
+			}
+		case "h", "left", "backspace", "esc":
+			m.focused--
+			if m.focused < treeView {
+				m.focused = treeView
 			}
 		}
 
-		switch m.active {
-		case tree:
-			// append commands
-		case list:
-			// append commands
-		case snippets:
-			// append commands
+		switch m.focused {
+		case treeView:
+			newModel, _ := m.tree.Update(msg)
+			m.tree = newModel.(treeModel)
+		case listView:
+			newModel, _ := m.list.Update(msg)
+			m.list = newModel.(treeModel)
+		case snippetView:
+			newModel, _ := m.snippet.Update(msg)
+			m.snippet = newModel.(treeModel)
 		}
 	}
 
@@ -158,30 +125,37 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m mainModel) View() string {
-	s := ""
-	// model := m.currentFocusedModel()
+	if m.quiting {
+		return ""
+	}
 
-	switch m.active {
-	case tree:
+	if !m.loaded {
+		return "Loading..."
+	}
+
+	s := ""
+
+	switch m.focused {
+	case treeView:
 		s += lipgloss.JoinHorizontal(
 			lipgloss.Left,
-			activeModelStyle.Render(m.tree.View()),
-			modelStyle.Render(m.list.View()),
-			modelStyle.Render(m.snippet.View()),
+			focusedTreeStyle.Render(m.tree.View()),
+			listStyle.Render(m.list.View()),
+			snippetStyle.Render(m.snippet.View()),
 		)
-	case list:
+	case listView:
 		s += lipgloss.JoinHorizontal(
 			lipgloss.Left,
-			modelStyle.Render(m.tree.View()),
-			activeModelStyle.Render(m.list.View()),
-			modelStyle.Render(m.snippet.View()),
+			treeStyle.Render(m.tree.View()),
+			focusedListStyle.Render(m.list.View()),
+			snippetStyle.Render(m.snippet.View()),
 		)
-	case snippets:
+	case snippetView:
 		s += lipgloss.JoinHorizontal(
 			lipgloss.Left,
-			modelStyle.Render(m.tree.View()),
-			modelStyle.Render(m.list.View()),
-			modelStyle.Render(m.snippet.View()),
+			treeStyle.Render(m.tree.View()),
+			listStyle.Render(m.list.View()),
+			focusedSnippetStyle.Render(m.snippet.View()),
 		)
 	}
 
@@ -189,6 +163,8 @@ func (m mainModel) View() string {
 }
 
 func main() {
+	// clear the terminal
+	fmt.Print("\033[H\033[2J")
 	p := tea.NewProgram(newModel())
 	if _, err := p.Run(); err != nil {
 		log.Fatal(err)
