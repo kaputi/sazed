@@ -39,9 +39,7 @@ func NewMetadata(filetype, path string) Metadata {
 	filePath := fmt.Sprintf("%s%smetadata.json", path, string(os.PathSeparator))
 	if _, err := os.Stat(filePath); err == nil {
 		// if metadata Exists, read it and return it
-		metadata := ReadMetadata(filePath)
-		metadata.path = path
-		return metadata
+		return ReadMetadata(path)
 	}
 
 	metadata := Metadata{
@@ -62,13 +60,16 @@ func NewMetadata(filetype, path string) Metadata {
 	return metadata
 }
 
-func ReadMetadata(filePath string) Metadata {
+func ReadMetadata(path string) Metadata {
+	filePath := fmt.Sprintf("%s%smetadata.json", path, string(os.PathSeparator))
 	file, err := os.ReadFile(filePath)
 	utils.CheckErr(err)
 	var metadata Metadata
 
 	err = json.Unmarshal(file, &metadata)
 	utils.CheckErr(err)
+
+	metadata.path = path
 	return metadata
 }
 
