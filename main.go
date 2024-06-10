@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"log"
+	"sazed/config"
+	"sazed/utils"
 
 	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
@@ -39,26 +41,37 @@ type mainModel struct {
 	snippet treeModel
 	quiting bool
 	loaded  bool
+	config  config.Config
 }
 
-func newModel() mainModel {
+func newModel(sazedConfig config.Config) mainModel {
 	help := help.New()
 	help.ShowAll = true
+
+	entries := utils.ReadDir(sazedConfig.Root())
+	dirs := []string{}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			dirs = append(dirs, entry.Name())
+		}
+	}
+
+	snippetEntry := utils.ReadDir(fmt.Sprintf("%s/%s", sazedConfig.Root(), dirs[0]))
+	// TODO: read metadata etc, and this should run every time a directory is selected
+	snippetList := []string{}
+	for _, entry := range snippetEntry {
+		ext := entry.Ext()
+		if !entry.IsDir() && ext != ".txt" {
+			snippetList = append(snippetList, entry.Name())
+		}
+	}
+
 	return mainModel{
+		config:  sazedConfig,
 		help:    help,
 		focused: treeView,
-		tree: initTreeModel(
-			[]string{
-				"/abc/def/ghi",
-				"/home/eduardo/pupu",
-			},
-		),
-		list: initTreeModel(
-			[]string{
-				"/Hello/World",
-				"/Hello/World/Again",
-			},
-		),
+		tree:    initTreeModel(dirs),
+		list:    initTreeModel(snippetList),
 		snippet: initTreeModel(
 			[]string{
 				"/lala",
@@ -165,7 +178,13 @@ func (m mainModel) View() string {
 func main() {
 	// clear the terminal
 	fmt.Print("\033[H\033[2J")
-	p := tea.NewProgram(newModel())
+
+	config := config.Load()
+
+	utils.CreateDirIfNotExist(config.Root())
+	utils.CreateDirIfNotExist(fmt.Sprintf("%s/%s", config.Root(), config.Filetype()))
+
+	p := tea.NewProgram(newModel(config))
 	if _, err := p.Run(); err != nil {
 		log.Fatal(err)
 	}

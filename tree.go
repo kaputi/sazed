@@ -66,7 +66,10 @@ func (m treeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m treeModel) View() string {
-	s := ""
+	s := " Directories:\n\n"
+	if len(m.directories) == 0 {
+		s += "  EMPTY\n"
+	}
 	for i, dir := range m.directories {
 		cursor := "  "
 		if m.cursor == i {
