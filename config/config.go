@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"sazed/utils"
 	"strings"
@@ -59,16 +58,12 @@ func Load() Config {
 	}
 
 	configFile, err := os.ReadFile(consfigFilePath)
-	if err != nil {
-		log.Fatal(err)
-	}
+	utils.CheckErr(err)
 
 	var yamlData yamlConfig
 
 	err = yaml.Unmarshal(configFile, &yamlData)
-	if err != nil {
-		log.Fatal(err)
-	}
+	utils.CheckErr(err)
 
 	rootPathParts := strings.Split(yamlData.Root, string(os.PathSeparator))
 	if string(rootPathParts[0]) == "~" {
@@ -97,18 +92,12 @@ func createConfigFile() {
 	utils.CreateDirIfNotExist(configPath)
 
 	file, err := os.Create(fmt.Sprintf("%s/config.yaml", configPath))
-	if err != nil {
-		log.Fatal(err)
-	}
+	utils.CheckErr(err)
 	defer file.Close()
 
 	yamlData, err := yaml.Marshal(&defaultConfig)
-	if err != nil {
-		log.Fatal(err)
-	}
+	utils.CheckErr(err)
 
 	_, err = io.WriteString(file, string(yamlData))
-	if err != nil {
-		log.Fatal(err)
-	}
+	utils.CheckErr(err)
 }

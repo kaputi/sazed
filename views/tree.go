@@ -1,4 +1,4 @@
-package main
+package views
 
 import (
 	"fmt"
@@ -8,14 +8,14 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-type treeModel struct {
+type TreeModel struct {
 	directories []string
 	paths       map[string]string
 	cursor      int
 	focus       bool
 }
 
-func initTreeModel(pathList []string) treeModel {
+func NewTree(pathList []string) TreeModel {
 	paths := make(map[string]string)
 	directories := []string{}
 	for _, path := range pathList {
@@ -24,29 +24,31 @@ func initTreeModel(pathList []string) treeModel {
 		paths[dir] = path
 		directories = append(directories, dir)
 	}
-	return treeModel{
+	return TreeModel{
 		paths:       paths,
 		directories: directories,
 	}
 }
 
-func (m treeModel) Init() tea.Cmd {
+func (m TreeModel) Focus() tea.Msg {
+	m.focus = true
+	return focusCmd(m.focus)
+}
+
+func (m TreeModel) Blur() tea.Msg {
+	m.focus = false
+	return focusCmd(m.focus)
+}
+
+func (m TreeModel) Path() string {
+	return m.paths[m.directories[m.cursor]]
+}
+
+func (m TreeModel) Init() tea.Cmd {
 	return nil
 }
 
-func (m treeModel) Focus() {
-	m.focus = true
-}
-
-func (m treeModel) Blur() {
-	m.focus = false
-}
-
-func (m treeModel) Focused() bool {
-	return m.focus
-}
-
-func (m treeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m TreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -65,17 +67,24 @@ func (m treeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m treeModel) View() string {
-	s := " Directories:\n\n"
-	if len(m.directories) == 0 {
-		s += "  EMPTY\n"
+func (m TreeModel) View() string {
+	s := ""
+	if m.focus {
+		s += focusedTitleStyle.Render("Directories:")
+	} else {
+		s += titleStyle.Render("Directories:")
 	}
+
+	s += "\n\n"
+
 	for i, dir := range m.directories {
-		cursor := "  "
 		if m.cursor == i {
-			cursor = "->"
+			s += fmt.Sprintf("%s\n", titleStyle.Render(fmt.Sprintf("│ %s", dir)))
+			s += titleStyle.Render("│")
+			s += "\n"
+		} else {
+			s += fmt.Sprintf("  %s\n\n", dir)
 		}
-		s += fmt.Sprintf("%s %s\n", cursor, dir)
 	}
 	return s
 }

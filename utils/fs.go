@@ -2,7 +2,6 @@ package utils
 
 import (
 	"errors"
-	"log"
 	"os"
 	"path"
 	"strings"
@@ -33,9 +32,7 @@ func (e fsEntry) Ext() string {
 
 func ReadDir(dirPath string) []fsEntry {
 	files, err := os.ReadDir(dirPath)
-	if err != nil {
-		log.Fatal(err)
-	}
+	CheckErr(err)
 
 	entries := make([]fsEntry, len(files))
 
@@ -55,8 +52,14 @@ func ReadDir(dirPath string) []fsEntry {
 func CreateDirIfNotExist(dirPath string) {
 	if _, err := os.Stat(dirPath); errors.Is(err, os.ErrNotExist) {
 		err := os.MkdirAll(dirPath, 0755)
-		if err != nil {
-			log.Fatal(err)
-		}
+		CheckErr(err)
+	}
+}
+
+func CreateFileIfNotExist(filePath string) {
+	if _, err := os.Stat(filePath); errors.Is(err, os.ErrNotExist) {
+		f, err := os.Create(filePath)
+		CheckErr(err)
+		defer f.Close()
 	}
 }

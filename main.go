@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"sazed/config"
 	"sazed/utils"
+	"sazed/views"
 
 	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
@@ -36,9 +36,9 @@ var (
 type mainModel struct {
 	help    help.Model
 	focused focused
-	tree    treeModel
-	list    treeModel
-	snippet treeModel
+	tree    views.TreeModel
+	list    views.TreeModel
+	snippet views.TreeModel
 	quiting bool
 	loaded  bool
 	config  config.Config
@@ -70,9 +70,9 @@ func newModel(sazedConfig config.Config) mainModel {
 		config:  sazedConfig,
 		help:    help,
 		focused: treeView,
-		tree:    initTreeModel(dirs),
-		list:    initTreeModel(snippetList),
-		snippet: initTreeModel(
+		tree:    views.NewTree(dirs),
+		list:    views.NewTree(snippetList),
+		snippet: views.NewTree(
 			[]string{
 				"/lala",
 				"/lalalala",
@@ -103,6 +103,8 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		snippetStyle = columnStyle.Width(snippetWidth).Height(msg.Height - 2)
 		focusedSnippetStyle = snippetStyle.BorderForeground(lipgloss.Color("#008080"))
 
+		m.tree.Update(msg)
+
 		m.loaded = true
 
 	case tea.KeyMsg:
@@ -124,13 +126,13 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch m.focused {
 		case treeView:
 			newModel, _ := m.tree.Update(msg)
-			m.tree = newModel.(treeModel)
+			m.tree = newModel.(views.TreeModel)
 		case listView:
 			newModel, _ := m.list.Update(msg)
-			m.list = newModel.(treeModel)
+			m.list = newModel.(views.TreeModel)
 		case snippetView:
 			newModel, _ := m.snippet.Update(msg)
-			m.snippet = newModel.(treeModel)
+			m.snippet = newModel.(views.TreeModel)
 		}
 	}
 
@@ -185,7 +187,15 @@ func main() {
 	utils.CreateDirIfNotExist(fmt.Sprintf("%s/%s", config.Root(), config.Filetype()))
 
 	p := tea.NewProgram(newModel(config))
-	if _, err := p.Run(); err != nil {
-		log.Fatal(err)
+	_, err := p.Run()
+	utils.CheckErr(err)
+
+	files := utils.ReadDir("/home/eduardo")
+	for _, file := range files {
+		fmt.Println("FILE: -----------")
+		fmt.Println("name", file.Name())
+		fmt.Println("ext", file.Ext())
+		fmt.Println("path", file.Path())
+		fmt.Println("isDir", file.IsDir())
 	}
 }
