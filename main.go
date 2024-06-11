@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"sazed/config"
 	"sazed/utils"
 	"sazed/views"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/help"
 	tea "github.com/charmbracelet/bubbletea"
@@ -37,7 +39,7 @@ type mainModel struct {
 	help    help.Model
 	focused focused
 	tree    views.TreeModel
-	list    views.TreeModel
+	list    views.ListModel
 	snippet views.TreeModel
 	quiting bool
 	loaded  bool
@@ -56,22 +58,17 @@ func newModel(sazedConfig config.Config) mainModel {
 		}
 	}
 
-	snippetEntry := utils.ReadDir(fmt.Sprintf("%s/%s", sazedConfig.Root(), dirs[0]))
+	// snippetEntry := utils.ReadDir(fmt.Sprintf("%s/%s", sazedConfig.Root(), dirs[0]))[0]
 	// TODO: read metadata etc, and this should run every time a directory is selected
-	snippetList := []string{}
-	for _, entry := range snippetEntry {
-		ext := entry.Ext()
-		if !entry.IsDir() && ext != ".txt" {
-			snippetList = append(snippetList, entry.Name())
-		}
-	}
+
+	dir := strings.Join([]string{sazedConfig.Root(), dirs[0]}, string(os.PathSeparator))
 
 	return mainModel{
 		config:  sazedConfig,
 		help:    help,
 		focused: treeView,
 		tree:    views.NewTree(dirs),
-		list:    views.NewTree(snippetList),
+		list:    views.NewList(dir),
 		snippet: views.NewTree(
 			[]string{
 				"/lala",
@@ -129,7 +126,7 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.tree = newModel.(views.TreeModel)
 		case listView:
 			newModel, _ := m.list.Update(msg)
-			m.list = newModel.(views.TreeModel)
+			m.list = newModel.(views.ListModel)
 		case snippetView:
 			newModel, _ := m.snippet.Update(msg)
 			m.snippet = newModel.(views.TreeModel)
@@ -190,12 +187,12 @@ func main() {
 	_, err := p.Run()
 	utils.CheckErr(err)
 
-	files := utils.ReadDir("/home/eduardo")
-	for _, file := range files {
-		fmt.Println("FILE: -----------")
-		fmt.Println("name", file.Name())
-		fmt.Println("ext", file.Ext())
-		fmt.Println("path", file.Path())
-		fmt.Println("isDir", file.IsDir())
-	}
+	// files := utils.ReadDir("/home/eduardo")
+	// for _, file := range files {
+	// 	fmt.Println("FILE: -----------")
+	// 	fmt.Println("name", file.Name())
+	// 	fmt.Println("ext", file.Ext())
+	// 	fmt.Println("path", file.Path())
+	// 	fmt.Println("isDir", file.IsDir())
+	// }
 }
